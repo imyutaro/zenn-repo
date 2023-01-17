@@ -12,14 +12,14 @@ published: false
 
 dbtの公式チュートリアルはBigQueryなどクラウド環境を利用する前提で書かれていたので、ローカル環境だけでできるようにDuckDBを用いたチュートリアルを書きました。また、公式チュートリアルにはgitの操作なども含まれていたため、dbtを利用するのに最低限必要そうなもののみに絞って書こうと思います。
 
-以下の記事を参考にしています。
-* 公式チュートリアル [Getting started with dbt Core | dbt Developer Hub](https://docs.getdbt.com/docs/get-started/getting-started-dbt-core)
+以下の素晴らしい記事を参考にして書いています。
+* dbt公式チュートリアル [Getting started with dbt Core | dbt Developer Hub](https://docs.getdbt.com/docs/get-started/getting-started-dbt-core)
 * [DuckDBとdbtとRillで作るローカルで動くDWHっぽいもの](https://zenn.dev/takimo/articles/bb11eab78232f4)
 
 
 ## dbtとは？
 
-dbtはETL（Extract/Transform/Load）でいうところのtransformationを担うツールです。
+dbtはETL（Extract/Transform/Load）でいうところのtransformationのワークフローを助けてくれるツールです。
 https://docs.getdbt.com/docs/introduction
 
 
@@ -30,7 +30,7 @@ https://docs.getdbt.com/docs/introduction
 - yamlにテーブル定義書を記述すため、テーブル定義書をgit管理できる
 - SQLのテストが簡単にできる
 
-ここら辺がメリットかなと個人的に思います。よく利用するSQLのsnippetをmacro（[Jinja and macros | dbt Developer Hub](https://docs.getdbt.com/docs/build/jinja-macros#macros)）として登録して、関数のように利用できる機能がありますが、SQLが複雑化し管理がしづらいため、利用はなるべく避けるのがいい気がします。
+ここら辺がメリットかなと個人的に思います。SQLのsnippetを保存し、関数のように利用できるmacro機能（[Jinja and macros | dbt Developer Hub](https://docs.getdbt.com/docs/build/jinja-macros#macros)）がありますが、SQLが複雑化し管理がしづらいため、利用はなるべく避けるのがいい気がします。
 
 
 ## DuckDBのインストール
@@ -58,7 +58,7 @@ D select 'aaaa';
 D .exit
 ```
 
-`.help`でヘルプを表、`.exit`でDuckDBのCLIから抜けられます。
+`.help`でヘルプを表示、`.exit`でDuckDBのCLIから抜けられます。
 
 
 ## dbtのインストール
@@ -237,11 +237,11 @@ final as (
 select * from final
 ```
 
-dbtプロジェクトのディレクトリ以下で、dbt runで上記のSQLが実行されtransformができます。
+dbtプロジェクトのディレクトリ以下で、`dbt run`で上記のSQLが実行されtransformができます。
 
 ![](/images/dbt_tutorial_with_duckdb/dbt_run.png)
 
-（`models/example`以下にSQLが存在しているため、3つSQLが実行されています。）
+（`models/example`以下にもSQLが存在しているため、3つSQLが実行されています。）
 
 :::details 実行結果テキスト
 ```
@@ -366,7 +366,7 @@ final as (
 select * from final
 ```
 
-`dbt run`を実行。`stg_customers`と`stg_orders`と`customers`は別々のテーブルとして作成されます。dbtが自動で実行中順序を推測して順番にクエリが実行されます。`customers`は`stg_customers`と`stg_orders`に依存しているため`customers`が最後に実行されています。
+`dbt run`を実行。`stg_customers`と`stg_orders`と`customers`は別々のテーブルとして作成されます。dbtが自動で実行順序を推測して順番にクエリが実行されます。`customers`は`stg_customers`と`stg_orders`に依存しているため`customers`が最後に実行されています。SQL同士で循環的な依存関係があった場合は、エラーを出してくれます。
 
 
 ## テストを実行する
@@ -416,7 +416,7 @@ models:
 - unique: ユニークであるか
 - not_null: nullが含まれていないか
 - accepted_values: 指定した許容値のみかどうか
-- relationships: テーブル間のリレーション（今回の例では、`orders`テーブル内の`customer_id`は、`customers`テーブルの`id`に含まれている）
+- relationships: テーブル間のリレーション（今回の例では、`orders`テーブル内の`customer_id`は、`customers`テーブルの`id`に含まれているというリレーション）
 
 ## ドキメントを生成する
 
