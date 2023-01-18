@@ -3,7 +3,7 @@ title: "ローカル環境のみ利用したdbtチュートリアル"
 emoji: "💁"
 type: "tech"
 topics: ["dbt", "duckdb"]
-published: false
+published: true
 ---
 
 :::message
