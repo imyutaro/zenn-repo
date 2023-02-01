@@ -117,8 +117,8 @@ Happy modeling!
 | Resource | Description |
 |---|---|
 | models | 基本的なSQLを置く場所。ここのディレクトリ以下のSQLは`dbt run`を実行した際に実行される。 |
-| snapshots | 状態があるようなデータのSQLを置いておく場所。例は[Snapshots \| dbt Developer Hub](https://docs.getdbt.com/docs/build/snapshots)がわかりやすい。 |
-| seeds | csvなどの静的ファイルを置いておく場所。 `dbt seed`コマンドでdbtにロードできる。 |
+| snapshots | 状態があるようなデータのSQLを置いておく場所。例は、[Snapshots \| dbt Developer Hub](https://docs.getdbt.com/docs/build/snapshots)がわかりやすい。 |
+| seeds | csvなどの静的ファイルを置いておく場所。 `dbt seed`コマンドでdbtにロードできる。基本的にはマスターデータなどのlookup tableを置いておく場所。（[The rest of the project \| dbt Developer Hub](https://docs.getdbt.com/guides/best-practices/how-we-structure/5-the-rest-of-the-project#how-we-use-the-other-folders)） |
 | tests | SQLのテストクエリを置いておく場所。 |
 | macros | macroを置いておく場所。 |
 | analysis | より分析っぽいアドホックなSQLを置く場所。ここに配置されたSQLは、`dbt run`時、変数置換は行われるが実行はされない。 |
@@ -137,43 +137,87 @@ tutorial:
 
 ## データ登録
 
-以下のデータをダウンロードし、 `seeds` ディレクトリに設置。
+以下のデータをダウンロードし、 `data` ディレクトリに設置^[`dbt seed`コマンドでseedとして登録することも可能ですが、dbt best practiceにはsourceデータは設置するべきではないとなっているので、DuckDBに手で登録する形を取っています。参考：[The rest of the project \| dbt Developer Hub](https://docs.getdbt.com/guides/best-practices/how-we-structure/5-the-rest-of-the-project#how-we-use-the-other-folders)]。
+
 https://github.com/dbt-labs/jaffle_shop/tree/main/seeds
 ```
-cd seeds
-curl -OL https://raw.githubusercontent.com/dbt-labs/jaffle_shop/main/seeds/raw_customers.csv
-curl -OL https://raw.githubusercontent.com/dbt-labs/jaffle_shop/main/seeds/raw_orders.csv
+mkdir tutorial/data
+cd tutorial/data
+curl -L https://raw.githubusercontent.com/dbt-labs/jaffle_shop/main/seeds/raw_customers.csv -o ./tutorial/data/raw_customers.csv
+curl -L https://raw.githubusercontent.com/dbt-labs/jaffle_shop/main/seeds/raw_orders.csv -o ./tutorial/data/raw_orders.csv
 ```
 
-`dbt seed`コマンドでcsvをDBに登録。
+DuckDBを起動し、csvをDBに登録。
 
-![](/images/dbt_tutorial_with_duckdb/dbt_seed.png)
-
-:::details 実行結果テキスト
 ```
-dbt seed
-04:21:05  Running with dbt=1.3.1
-04:21:05  Partial parse save file not found. Starting full parse.
-04:21:06  Found 3 models, 4 tests, 0 snapshots, 0 analyses, 292 macros, 0 operations, 2 seed files, 0 sources, 0 exposures, 0 metrics
-04:21:06
-04:21:06  Concurrency: 1 threads (target='dev')
-04:21:06
-04:21:06  1 of 2 START seed file main.raw_customers ...................................... [RUN]
-04:21:06  1 of 2 OK loaded seed file main.raw_customers .................................. [INSERT 100 in 0.11s]
-04:21:06  2 of 2 START seed file main.raw_orders ......................................... [RUN]
-04:21:06  2 of 2 OK loaded seed file main.raw_orders ..................................... [INSERT 99 in 0.04s]
-04:21:06
-04:21:06  Finished running 2 seeds in 0 hours 0 minutes and 0.25 seconds (0.25s).
-04:21:06
-04:21:06  Completed successfully
-04:21:06
-04:21:06  Done. PASS=2 WARN=0 ERROR=0 SKIP=0 TOTAL=2
+./duckdb tutorial.db
+v0.6.1 919cad22e8
+Enter ".help" for usage hints.
+D # テーブルが1つもないことを確認
+D .tables
+D
+D # csvからテーブルを作成して登録
+D CREATE TABLE raw_customers AS SELECT * FROM 'tutorial/data/raw_customers.csv';
+D CREATE TABLE raw_orders AS SELECT * FROM 'tutorial/data/raw_orders.csv';
+D
+D # テーブルが登録できていることを確認
+D .tables
+raw_customers  raw_orders
+D
+D # テーブルの中身を確認
+D SELECT * FROM raw_customers LIMIT 3;
+┌───────┬────────────┬───────────┐
+│  id   │ first_name │ last_name │
+│ int32 │  varchar   │  varchar  │
+├───────┼────────────┼───────────┤
+│     1 │ Michael    │ P.        │
+│     2 │ Shawn      │ M.        │
+│     3 │ Kathleen   │ P.        │
+└───────┴────────────┴───────────┘
+D SELECT * FROM raw_orders LIMIT 3;
+┌───────┬─────────┬────────────┬───────────┐
+│  id   │ user_id │ order_date │  status   │
+│ int32 │  int32  │    date    │  varchar  │
+├───────┼─────────┼────────────┼───────────┤
+│     1 │       1 │ 2018-01-01 │ returned  │
+│     2 │       3 │ 2018-01-02 │ completed │
+│     3 │      94 │ 2018-01-04 │ completed │
+└───────┴─────────┴────────────┴───────────┘
+D .exit
 ```
-:::
 
-`tutorial.db`のあるディレクトリまで移動して、テーブルが保存されているか確認しましょう。先ほどと同様に、`./duckdb tutorial.db`でDuckDBを起動し、`.table`コマンドを実行しましょう。登録されているテーブル一覧が表示されます。`select * from raw_customers limit 5;`でcsvから登録されたデータを確認しましょう。
+https://duckdb.org/docs/data/csv.html
 
-![](/images/dbt_tutorial_with_duckdb/check_table.png)
+`models/schema.yml`に読み込んだテーブルの情報を追記。
+
+```yaml
+version: 2
+
+sources:
+  - name: main
+    tables:
+      - name: raw_customers
+      - name: raw_orders
+```
+
+追記した`-name main`のmainはスキーマ名を表しています。duckdb cli上で`select * from information_schema.tables;`を実行することでテーブルのスキーマを確認できます。
+
+https://duckdb.org/docs/sql/information_schema
+
+
+## exampleのSQLを削除する
+
+`models/example`にexampleのsqlファイルやyamlファイルがあり必要ないので、削除しておきます。削除後`dbt_project.yml`の末尾を以下のように書き換えます。
+
+```diff yaml
+ models:
+   tutorial:
+-    # Config indicated by + and applies to all files under models/example/
+-    example:
+-      +materialized: view
++    +materialized: table
+```
+
 
 ## Transformを行う（モデルをビルドする）
 
@@ -187,7 +231,7 @@ with customers as (
         first_name,
         last_name
 
-    from {{ ref('raw_customers') }}
+    from {{ source('main', 'raw_customers') }}
 
 ),
 
@@ -199,7 +243,7 @@ orders as (
         order_date,
         status
 
-    from {{ ref('raw_orders') }}
+    from {{ source('main', 'raw_orders') }}
 
 ),
 
@@ -237,58 +281,33 @@ final as (
 select * from final
 ```
 
-dbtプロジェクトのディレクトリ以下で、`dbt run`で上記のSQLが実行されtransformができます。
+dbtプロジェクトのディレクトリ以下(今回の例で言うと`tutorial`ディレクトリ以下)で、`dbt run`で上記のSQLが実行されtransformができます。
 
 ![](/images/dbt_tutorial_with_duckdb/dbt_run.png)
 
-（`models/example`以下にもSQLが存在しているため、3つSQLが実行されています。）
-
 :::details 実行結果テキスト
 ```
+cd tutorial
 dbt run
-04:30:32  Running with dbt=1.3.1
-04:30:32  Found 3 models, 4 tests, 0 snapshots, 0 analyses, 292 macros, 0 operations, 2 seed files, 0 sources, 0 exposures, 0 metrics
-04:30:32
-04:30:32  Concurrency: 1 threads (target='dev')
-04:30:32
-04:30:32  1 of 3 START sql view model main.custoemrs ..................................... [RUN]
-04:30:32  1 of 3 OK created sql view model main.custoemrs ................................ [OK in 0.09s]
-04:30:32  2 of 3 START sql table model main.my_first_dbt_model ........................... [RUN]
-04:30:32  2 of 3 OK created sql table model main.my_first_dbt_model ...................... [OK in 0.06s]
-04:30:32  3 of 3 START sql view model main.my_second_dbt_model ........................... [RUN]
-04:30:32  3 of 3 OK created sql view model main.my_second_dbt_model ...................... [OK in 0.03s]
-04:30:32
-04:30:32  Finished running 2 view models, 1 table model in 0 hours 0 minutes and 0.28 seconds (0.28s).
-04:30:32
-04:30:32  Completed successfully
-04:30:32
-04:30:32  Done. PASS=3 WARN=0 ERROR=0 SKIP=0 TOTAL=3
+06:16:02  Running with dbt=1.3.1
+06:16:02  Unable to do partial parsing because profile has changed
+06:16:03  Found 1 model, 0 tests, 0 snapshots, 0 analyses, 292 macros, 0 operations, 0 seed files, 2 sources, 0 exposures, 0 metrics
+06:16:03
+06:16:03  Concurrency: 1 threads (target='dev')
+06:16:03
+06:16:03  1 of 1 START sql table model main.customers .................................... [RUN]
+06:16:03  1 of 1 OK created sql table model main.customers ............................... [OK in 0.12s]
+06:16:03
+06:16:03  Finished running 1 table model in 0 hours 0 minutes and 0.28 seconds (0.28s).
+06:16:03
+06:16:03  Completed successfully
+06:16:03
+06:16:03  Done. PASS=1 WARN=0 ERROR=0 SKIP=0 TOTAL=1
 ```
 :::
 
-`{{ ref('raw_customers') }}`などが実体に置き換えられたSQLは`/target/compiled/tutorial/models`以下に格納されています。
+`{{ source('main', 'raw_customers') }}`などが実体に置き換えられたSQLは`/target/compiled/tutorial/models`以下に格納されています。
 
-## exampleのSQLを削除する
-
-`models/example`にexampleのsqlファイルやyamlファイルがあり必要ないので、削除しておきます。削除後`dbt_project.yml`の末尾に記載の
-
-```yaml
-models:
-  tutorial:
-    # Config indicated by + and applies to all files under models/example/
-    example:
-      +materialized: view
-```
-
-を
-
-```yaml
-models:
-  tutorial:
-    +materialized: table
-```
-
-のように書き換えます。
 
 ## データとロジックを分離したTransformを行う（モデルの上にモデルをビルドする）
 
@@ -302,7 +321,7 @@ select
     first_name,
     last_name
 
-from {{ ref('raw_customers') }}
+from {{ source('main', 'raw_customers') }}
 ```
 
 `models/stg_orders.sql`として以下を保存。
@@ -314,7 +333,7 @@ select
     order_date,
     status
 
-from {{ ref('raw_orders') }}
+from {{ source('main', 'raw_orders') }}
 ```
 
 `models/customers.sql`を以下に書き換えます。
@@ -371,42 +390,48 @@ select * from final
 
 ## テストを実行する
 
-dbtでは、`models`ディレクトリにあるSQLにテストを行うことができます。`models/schema.yml`として以下を保存します。
+dbtでは、`models`ディレクトリにあるSQLにテストを行うことができます。`models/schema.yml`に以下を保存します。
 
-```yaml
-version: 2
+```diff yaml
+ version: 2
 
-models:
-  - name: customers
-    columns:
-      - name: customer_id
-        tests:
-          - unique
-          - not_null
+ sources:
+   - name: main
+     tables:
+       - name: raw_customers
+       - name: raw_orders
 
-  - name: stg_customers
-    columns:
-      - name: customer_id
-        tests:
-          - unique
-          - not_null
-
-  - name: stg_orders
-    columns:
-      - name: order_id
-        tests:
-          - unique
-          - not_null
-      - name: status
-        tests:
-          - accepted_values:
-              values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
-      - name: customer_id
-        tests:
-          - not_null
-          - relationships:
-              to: ref('stg_customers')
-              field: customer_id
++models:
++  - name: customers
++    columns:
++      - name: customer_id
++        tests:
++          - unique
++          - not_null
++
++  - name: stg_customers
++    columns:
++      - name: customer_id
++        tests:
++          - unique
++          - not_null
++
++  - name: stg_orders
++    columns:
++      - name: order_id
++        tests:
++          - unique
++          - not_null
++      - name: status
++        tests:
++          - accepted_values:
++              values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
++      - name: customer_id
++        tests:
++          - not_null
++          - relationships:
++              to: ref('stg_customers')
++              field: customer_id
 ```
 
 `dbt test`でテストを実行することができます。dbtにデフォルトであるテストを実行したり、自作のカスタムテストを各テーブルの各カラムに対して実行することができます。
@@ -422,42 +447,54 @@ models:
 
 先ほど作成した`models/schema.yml`をもとにドキュメントを作成することができます。`models/schema.yml`を以下に書き換えます。
 
-```yaml
-version: 2
+```diff yaml
+ version: 2
 
-models:
-  - name: customers
-    description: One record per customer
-    columns:
-      - name: customer_id
-        description: Primary key
-        tests:
-          - unique
-          - not_null
-      - name: first_order_date
-        description: NULL when a customer has not yet placed an order.
+ sources:
+   - name: main
+     tables:
+       - name: raw_customers
+       - name: raw_orders
 
-  - name: stg_customers
-    description: This model cleans up customer data
-    columns:
-      - name: customer_id
-        description: Primary key
-        tests:
-          - unique
-          - not_null
+ models:
+   - name: customers
++    description: One record per customer
+     columns:
+       - name: customer_id
++        description: Primary key
+         tests:
+           - unique
+           - not_null
+       - name: first_order_date
++        description: NULL when a customer has not yet placed an order.
 
-  - name: stg_orders
-    description: This model cleans up order data
-    columns:
-      - name: order_id
-        description: Primary key
-        tests:
-          - unique
-          - not_null
-      - name: status
-        tests:
-          - accepted_values:
-              values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
+   - name: stg_customers
++    description: This model cleans up customer data
+     columns:
+       - name: customer_id
++        description: Primary key
+         tests:
+           - unique
+           - not_null
+
+   - name: stg_orders
++    description: This model cleans up order data
+     columns:
+       - name: order_id
++        description: Primary key
+         tests:
+           - unique
+           - not_null
+       - name: status
+         tests:
+           - accepted_values:
+               values: ['placed', 'shipped', 'completed', 'return_pending', 'returned']
+       - name: customer_id
+         tests:
+           - not_null
+           - relationships:
+               to: ref('stg_customers')
+               field: customer_id
 ```
 
 `dbt docs generate`でドキュメントを生成。`dbt docs serve`でWebUIのドキュメントを起動できます（自動的にページが立ち上がらなかった場合、`http://localhost:8080`にChromeなどのブラウザでアクセスしてください）。画像のような`models/schema.yml`に記載した情報が記載されています。
@@ -477,6 +514,7 @@ models:
 受領したデータをSQL+dbtを用いて分析に必要なデータをローカル環境のみ作成し、PythonからDuckDBに接続して予測モデルとかに入力するとかの実装ができるとシステム化を行う際などにシームレスに移行できていいなと思っています。
 
 
-* 参考（再掲）
+## 参考
+
   * 公式チュートリアル [Getting started with dbt Core | dbt Developer Hub](https://docs.getdbt.com/docs/get-started/getting-started-dbt-core)
   * [DuckDBとdbtとRillで作るローカルで動くDWHっぽいもの](https://zenn.dev/takimo/articles/bb11eab78232f4)
