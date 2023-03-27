@@ -27,10 +27,10 @@ https://docs.getdbt.com/docs/introduction
 
 - 変数のようなものを利用できて、同じようなSQLを書かなくていい
 - テーブル間の依存関係を表すグラフ（lineage）をSQLから生成することができる
-- yamlにテーブル定義書を記述すため、テーブル定義書をgit管理できる
+- yamlにテーブル定義書を記述するため、テーブル定義書をgit管理できる
 - SQLのテストが簡単にできる
 
-ここら辺がメリットかなと個人的に思います。SQLのsnippetを保存し、関数のように利用できるmacro機能（[Jinja and macros | dbt Developer Hub](https://docs.getdbt.com/docs/build/jinja-macros#macros)）がありますが、SQLが複雑化し管理がしづらいため、利用はなるべく避けるのがいい気がします。
+ここら辺がメリットかなと個人的に思います。SQLのsnippetを保存し、関数のように利用できるmacro機能（[Jinja and macros | dbt Developer Hub](https://docs.getdbt.com/docs/build/jinja-macros#macros)）がありますが、SQLが複雑化しないように管理したり、同様のmacroが乱立しないよう運用するなど、利用には注意が必要だと思います。
 
 
 ## DuckDBのインストール
